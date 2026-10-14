@@ -37,7 +37,6 @@ import {
     StateGraph,
 } from '@langchain/langgraph';
 import { ToolNode, toolsCondition } from '@langchain/langgraph/prebuilt';
-import { agentTools } from './tools.js';
 
 /** 默认系统提示词：SP 运维助手 + 工具使用纪律（发信号的人工闸门写在提示词里）。 */
 export const DEFAULT_SYSTEM_PROMPT = [
@@ -52,7 +51,7 @@ export const DEFAULT_SYSTEM_PROMPT = [
 export interface CreateAgentGraphOptions {
     /** 必传：任何 BaseChatModel 实现（生产 ChatOpenAI，测试 FakeChatModel）。 */
     model: BaseChatModel;
-    /** 工具清单，默认 agentTools；可注入自定义工具。 */
+    /** 工具清单，默认空；生产由 index.ts 注入 SP 工具集。 */
     tools?: StructuredToolInterface[];
     /** 会话存储，默认进程内存；生产用 createCheckpointer() 传 SQLite。 */
     checkpointer?: BaseCheckpointSaver;
@@ -89,7 +88,7 @@ export function lastAiReply(messages: BaseMessage[]): string {
 export function createAgentGraph(options: CreateAgentGraphOptions) {
     const {
         model,
-        tools = agentTools,
+        tools = [],
         checkpointer = new MemorySaver(),
         systemPrompt = DEFAULT_SYSTEM_PROMPT,
     } = options;

@@ -13,7 +13,6 @@ import { createCheckpointer } from './agent/checkpoint.js';
 import { createAgentGraph } from './agent/graph.js';
 import { createModel } from './agent/model.js';
 import { createSpTools } from './agent/sp-tools.js';
-import { agentTools } from './agent/tools.js';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { defaultLog, type LogFn } from './middleware/logger.js';
@@ -85,7 +84,7 @@ export async function main(log: LogFn = defaultLog): Promise<RunningServer> {
     const graph = createAgentGraph({
         model: createModel(config),
         checkpointer: createCheckpointer(config.AGENT_SQLITE_PATH),
-        tools: [...agentTools, ...Object.values(spTools)],
+        tools: [...Object.values(spTools)],
     });
     const app = createApp({
         log,

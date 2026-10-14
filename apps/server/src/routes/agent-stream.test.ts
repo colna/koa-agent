@@ -8,25 +8,24 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAgentGraph } from '../agent/graph.js';
 import { createApp } from '../app.js';
 import { type RunningServer, startServer } from '../server.js';
+import { echoTool } from '../testing/echo-tool.js';
 import { FakeChatModel } from '../testing/fake-model.js';
 import { agentRouter } from './agent.js';
 
 function toolCallResponse(): AIMessage {
     return new AIMessage({
         content: '',
-        tool_calls: [
-            { name: 'calculator', args: { expression: '1+2*3' }, id: 'call_1', type: 'tool_call' },
-        ],
+        tool_calls: [{ name: 'echo', args: { text: 'hello' }, id: 'call_1', type: 'tool_call' }],
     });
 }
 
 const model = new FakeChatModel({
-    responses: [toolCallResponse(), '答案是 7', '你好世界一二三'],
+    responses: [toolCallResponse(), '回显完成：echo:hello', '你好世界一二三'],
 });
 let server: RunningServer;
 
 beforeAll(async () => {
-    const graph = createAgentGraph({ model, systemPrompt: '' });
+    const graph = createAgentGraph({ model, systemPrompt: '', tools: [echoTool] });
     const app = createApp({ log: () => {}, routes: [agentRouter({ graph })] });
     server = await startServer(app);
 });
@@ -63,7 +62,7 @@ function parseSse(text: string): SseFrame[] {
 
 describe('POST /agent/chat/stream', () => {
     it('工具回合后逐 token 输出并以 message.done 收尾', async () => {
-        const res = await postStream({ message: '1+2*3 等于几', threadId: 't_stream_tool' });
+        const res = await postStream({ message: '帮我回显 hello', threadId: 't_stream_tool' });
         expect(res.status).toBe(200);
         expect(res.headers.get('content-type')).toContain('text/event-stream');
 
@@ -74,19 +73,19 @@ describe('POST /agent/chat/stream', () => {
             .filter((frame) => frame.event === 'message.delta')
             .map((frame) => (JSON.parse(frame.data) as { text: string }).text);
         expect(deltas.length).toBeGreaterThan(1);
-        expect(deltas.join('')).toBe('答案是 7');
+        expect(deltas.join('')).toBe('回显完成：echo:hello');
 
         const done = frames.find((frame) => frame.event === 'message.done');
         expect(done).toBeDefined();
         expect(JSON.parse((done as SseFrame).data)).toEqual({
             threadId: 't_stream_tool',
-            reply: '答案是 7',
+            reply: '回显完成：echo:hello',
         });
 
         const toolMessages = model.calls.at(-1) ?? [];
         expect(
             toolMessages.some(
-                (message) => message instanceof ToolMessage && message.content === '7',
+                (message) => message instanceof ToolMessage && message.content === 'echo:hello',
             ),
         ).toBe(true);
     });

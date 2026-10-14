@@ -21,7 +21,6 @@ docs/         # 00 代码导读 + 01~04 项目四件套
 - `POST /agent/chat/stream` —— SSE 逐 token 流式
 - `GET /agent/threads/:threadId` —— 会话历史
 - `GET /health` —— 健康检查
-- 示例工具：`calculator`（安全求值）/ `current_time`（IANA 时区）
 - SP 运维工具（Agent 可调用，经 minerva BFF）：发信号（双步确认）/ 脚本错误分析与报表 / CSV 导出 / 在线分析
 - SQLite 会话持久化；模型走 OpenAI 兼容端点（OpenAI / DeepSeek / 本地 vLLM）
 

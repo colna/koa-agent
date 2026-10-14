@@ -21,11 +21,11 @@ describe('FakeChatModel', () => {
 
     it('bindTools 记录工具并返回自身', () => {
         const model = new FakeChatModel({ responses: ['ok'] });
-        const bound = model.bindTools([{ name: 'calculator' }, { name: 'current_time' }]);
+        const bound = model.bindTools([{ name: 'echo' }, { name: 'search' }]);
         expect(bound).toBe(model);
         expect(model.boundTools.map((tool) => (tool as { name?: string }).name)).toEqual([
-            'calculator',
-            'current_time',
+            'echo',
+            'search',
         ]);
     });
 
@@ -42,11 +42,11 @@ describe('FakeChatModel', () => {
 
     it('tool_calls 脚本经流式聚合后保留 tool_calls', async () => {
         const scripted = new AIMessage({
-            content: '我先算一下',
+            content: '我先调个工具',
             tool_calls: [
                 {
-                    name: 'calculator',
-                    args: { expression: '1+1' },
+                    name: 'echo',
+                    args: { text: 'hello' },
                     id: 'call_1',
                     type: 'tool_call',
                 },
@@ -54,15 +54,15 @@ describe('FakeChatModel', () => {
         });
         const model = new FakeChatModel({ responses: [scripted] });
 
-        const stream = await model.stream([new HumanMessage('1+1 等于几')]);
+        const stream = await model.stream([new HumanMessage('请回显 hello')]);
         let aggregated: AIMessageChunk | undefined;
         for await (const chunk of stream) {
             aggregated = aggregated === undefined ? chunk : concat(aggregated, chunk);
         }
 
-        expect(aggregated?.content).toContain('我先算一下');
-        expect(aggregated?.tool_calls?.[0]?.name).toBe('calculator');
-        expect(aggregated?.tool_calls?.[0]?.args).toEqual({ expression: '1+1' });
+        expect(aggregated?.content).toContain('我先调个工具');
+        expect(aggregated?.tool_calls?.[0]?.name).toBe('echo');
+        expect(aggregated?.tool_calls?.[0]?.args).toEqual({ text: 'hello' });
     });
 
     it('calls 记录收到的消息', async () => {

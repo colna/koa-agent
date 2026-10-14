@@ -2,45 +2,43 @@
  * Agent 图测试（FakeChatModel 脚本驱动，全离线）：
  * 「工具调用回合 → 最终回复」「同 thread 多轮携带上下文」「不同 thread 隔离」
  * 「系统提示词注入且不持久化」。
- * 也是理解 ReAct 循环实际怎么跑的最佳读物。
+ * 工具用测试夹具 echo（见 ../testing/echo-tool.ts）驱动，不依赖任何业务工具。
  */
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { describe, expect, it } from 'vitest';
+import { echoTool } from '../testing/echo-tool.js';
 import { FakeChatModel } from '../testing/fake-model.js';
 import { createAgentGraph, lastAiReply, newThreadId } from './graph.js';
 
 function toolCallResponse(): AIMessage {
     return new AIMessage({
         content: '',
-        tool_calls: [
-            { name: 'calculator', args: { expression: '1+2*3' }, id: 'call_1', type: 'tool_call' },
-        ],
+        tool_calls: [{ name: 'echo', args: { text: 'hello' }, id: 'call_1', type: 'tool_call' }],
     });
 }
 
 describe('createAgentGraph', () => {
     it('驱动一次工具调用后给出最终回复', async () => {
-        const model = new FakeChatModel({ responses: [toolCallResponse(), '1+2*3 = 7'] });
-        const graph = createAgentGraph({ model, systemPrompt: '' });
+        const model = new FakeChatModel({
+            responses: [toolCallResponse(), '回显结果是 echo:hello'],
+        });
+        const graph = createAgentGraph({ model, systemPrompt: '', tools: [echoTool] });
 
         const result = await graph.invoke(
-            { messages: [{ role: 'user', content: '帮我算 1+2*3' }] },
+            { messages: [{ role: 'user', content: '帮我回显 hello' }] },
             { configurable: { thread_id: 't_test1' } },
         );
 
-        expect(lastAiReply(result.messages)).toBe('1+2*3 = 7');
+        expect(lastAiReply(result.messages)).toBe('回显结果是 echo:hello');
         expect(model.calls).toHaveLength(2);
 
         const secondMessages = model.calls[1] ?? [];
         expect(secondMessages.map((message) => message.getType())).toEqual(['human', 'ai', 'tool']);
         const toolMessage = secondMessages.find((message) => message instanceof ToolMessage);
-        expect(toolMessage?.content).toBe('7');
+        expect(toolMessage?.content).toBe('echo:hello');
         expect((toolMessage as ToolMessage).tool_call_id).toBe('call_1');
 
-        expect(model.boundTools.map((tool) => (tool as { name?: string }).name)).toEqual([
-            'calculator',
-            'current_time',
-        ]);
+        expect(model.boundTools.map((tool) => (tool as { name?: string }).name)).toEqual(['echo']);
     });
 
     it('同 thread_id 两轮对话携带上下文', async () => {
