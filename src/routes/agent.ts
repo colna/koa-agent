@@ -1,9 +1,12 @@
 import Router from '@koa/router';
+import type { BaseMessage } from '@langchain/core/messages';
 import { z } from 'zod';
 import { type createAgentGraph, lastAiReply, newThreadId } from '../agent/graph.js';
+import { TokenStreamHandler } from '../agent/streaming.js';
 import { THREAD_ID_PATTERN } from '../config.js';
 import { HttpError } from '../errors.js';
 import type { LogFn } from '../middleware/logger.js';
+import { initSse, writeSseComment, writeSseEvent } from '../sse.js';
 
 type AgentGraph = ReturnType<typeof createAgentGraph>;
 
@@ -53,6 +56,54 @@ export function agentRouter(options: AgentRouterOptions): Router {
         const threadId = body.threadId ?? newThreadId();
         const reply = await invokeAgent(options.graph, body.message, threadId, options.log);
         ctx.body = { threadId, reply };
+    });
+
+    router.post('/chat/stream', async (ctx) => {
+        const body = chatRequestSchema.parse(ctx.request.body);
+        const threadId = body.threadId ?? newThreadId();
+
+        ctx.respond = false;
+        const res = ctx.res;
+        initSse(res);
+
+        const heartbeat = setInterval(() => writeSseComment(res, 'ping'), 15_000);
+        heartbeat.unref();
+
+        const handler = new TokenStreamHandler((text) => {
+            writeSseEvent(res, 'message.delta', { text });
+        });
+
+        try {
+            let fallbackReply = '';
+            const stream = await options.graph.stream(
+                { messages: [{ role: 'user', content: body.message }] },
+                {
+                    configurable: { thread_id: threadId },
+                    streamMode: 'updates',
+                    callbacks: [handler],
+                },
+            );
+            for await (const update of stream) {
+                const modelUpdate = (update as { model?: { messages?: BaseMessage[] } }).model;
+                if (modelUpdate?.messages !== undefined) {
+                    fallbackReply = lastAiReply(modelUpdate.messages);
+                }
+            }
+            const reply = handler.reply.length > 0 ? handler.reply : fallbackReply;
+            writeSseEvent(res, 'message.done', { threadId, reply });
+        } catch (err) {
+            options.log?.({
+                level: 'error',
+                message: 'agent 流式运行失败',
+                error: err instanceof Error ? err.message : String(err),
+            });
+            writeSseEvent(res, 'error', { code: 'AGENT_ERROR', message: 'Agent 运行失败' });
+        } finally {
+            clearInterval(heartbeat);
+            if (!res.writableEnded) {
+                res.end();
+            }
+        }
     });
 
     return router;
