@@ -1,3 +1,7 @@
+/**
+ * config.ts 单元测试：必填缺失 / 空串 / 默认值 / 非法 PORT、URL、NODE_ENV，
+ * 以及 threadId 命名规则。全部通过 loadConfig(假 env 对象) 完成，不读真实环境变量。
+ */
 import { describe, expect, it } from 'vitest';
 import { ConfigError, loadConfig, THREAD_ID_PATTERN } from './config.js';
 

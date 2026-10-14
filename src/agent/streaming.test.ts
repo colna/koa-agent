@@ -1,3 +1,7 @@
+/**
+ * TokenStreamHandler 单元测试：多消息场景下 current/last 双缓冲的切换
+ * （模拟"工具轮前言 + 最终回答"两段消息，验证 reply 只取最终段）。
+ */
 import type { ChatModelStreamEvent } from '@langchain/core/language_models/event';
 import { describe, expect, it } from 'vitest';
 import { TokenStreamHandler } from './streaming.js';

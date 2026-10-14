@@ -1,3 +1,7 @@
+/**
+ * 会话历史接口集成测试：两轮对话后按序返回 user/assistant 消息；
+ * 未知 thread → 404；非法 threadId → 422。
+ */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAgentGraph } from '../agent/graph.js';
 import { createApp } from '../app.js';

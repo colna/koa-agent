@@ -1,3 +1,9 @@
+/**
+ * Agent 图测试（FakeChatModel 脚本驱动，全离线）：
+ * 「工具调用回合 → 最终回复」「同 thread 多轮携带上下文」「不同 thread 隔离」
+ * 「系统提示词注入且不持久化」。
+ * 也是理解 ReAct 循环实际怎么跑的最佳读物。
+ */
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { describe, expect, it } from 'vitest';
 import { FakeChatModel } from '../testing/fake-model.js';

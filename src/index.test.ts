@@ -1,3 +1,8 @@
+/**
+ * 入口模块测试：.env 缺失容错 + 优雅退出流程。
+ * 两个技巧：① exit 注入 mock（否则真退出会杀掉测试进程）；
+ * ② 手动 process.emit('SIGTERM') 必须带信号名参数，否则监听器收到 undefined。
+ */
 import { describe, expect, it, vi } from 'vitest';
 import { createApp } from './app.js';
 import { loadDotEnv, setupGracefulShutdown } from './index.js';

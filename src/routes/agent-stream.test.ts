@@ -1,3 +1,8 @@
+/**
+ * SSE 流式接口集成测试：自行解析 SSE 帧，断言 delta 拼接 = done.reply。
+ * 覆盖「工具回合后流式」「普通回复」「运行失败 → error 帧」三场景；
+ * 底层是 stream-events 协议回调（见 src/agent/streaming.ts）。
+ */
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAgentGraph } from '../agent/graph.js';

@@ -1,3 +1,8 @@
+/**
+ * POST /agent/chat 集成测试（真实 HTTP + FakeChatModel）：
+ * 自动/自定义 threadId、多轮上下文、422（缺字段 / 非法 threadId / 未知字段）、
+ * 502 AGENT_ERROR。注意：脚本响应按用例执行顺序消费，新增用例留意队列顺序。
+ */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAgentGraph } from '../agent/graph.js';
 import { createApp } from '../app.js';

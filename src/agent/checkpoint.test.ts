@@ -1,3 +1,7 @@
+/**
+ * checkpointer 测试：':memory:' 退化为 MemorySaver；SQLite 文件目录自动创建；
+ * 核心断言 —— 「新图实例」能续读同一 thread 的历史（持久化的意义所在）。
+ */
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

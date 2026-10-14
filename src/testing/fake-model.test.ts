@@ -1,3 +1,7 @@
+/**
+ * FakeChatModel 自测：脚本消费与耗尽、bindTools 记录、流式分片聚合，
+ * 以及「tool_calls 经流式聚合不丢失」这一关键性质。
+ */
 import { AIMessage, type AIMessageChunk, HumanMessage } from '@langchain/core/messages';
 import { concat } from '@langchain/core/utils/stream';
 import { describe, expect, it } from 'vitest';

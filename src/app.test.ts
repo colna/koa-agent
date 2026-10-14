@@ -1,3 +1,8 @@
+/**
+ * 应用骨架集成测试：真实 HTTP（随机端口 + fetch）验证 /health、
+ * 404/405/422/500 四种错误信封与请求日志。
+ * 通过注入探针路由（/echo、/boom）构造各种边界。
+ */
 import Router from '@koa/router';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';

@@ -1,3 +1,7 @@
+/**
+ * startServer 测试：随机端口（port=0）可访问 /health；close() 后端口释放
+ * （再次请求会被拒绝 —— 证明连接确实关掉了）。
+ */
 import { describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import { startServer } from './server.js';

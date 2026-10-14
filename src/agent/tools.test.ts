@@ -1,3 +1,7 @@
+/**
+ * 工具集测试：求值器（优先级 / 括号 / 负数 / 除零 / 非法输入）
+ * 与两个工具的行为（错误以文本返回、zod 入参校验、时区处理）。
+ */
 import { describe, expect, it } from 'vitest';
 import { calculatorTool, currentTimeTool, ExpressionError, evaluateExpression } from './tools.js';
 
