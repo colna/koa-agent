@@ -1,7 +1,10 @@
 import { pathToFileURL } from 'node:url';
+import { createAgentGraph } from './agent/graph.js';
+import { createModel } from './agent/model.js';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { defaultLog, type LogFn } from './middleware/logger.js';
+import { agentRouter } from './routes/agent.js';
 import { type RunningServer, startServer } from './server.js';
 
 export function loadDotEnv(): void {
@@ -36,7 +39,8 @@ export function setupGracefulShutdown(
 export async function main(log: LogFn = defaultLog): Promise<RunningServer> {
     loadDotEnv();
     const config = loadConfig();
-    const app = createApp({ log });
+    const graph = createAgentGraph({ model: createModel(config) });
+    const app = createApp({ log, routes: [agentRouter({ graph, log })] });
     const running = await startServer(app, config.PORT, config.HOST);
     log({ level: 'info', message: '服务已启动', url: running.url });
     setupGracefulShutdown(running, log);

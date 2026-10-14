@@ -1,0 +1,59 @@
+import Router from '@koa/router';
+import { z } from 'zod';
+import { type createAgentGraph, lastAiReply, newThreadId } from '../agent/graph.js';
+import { THREAD_ID_PATTERN } from '../config.js';
+import { HttpError } from '../errors.js';
+import type { LogFn } from '../middleware/logger.js';
+
+type AgentGraph = ReturnType<typeof createAgentGraph>;
+
+const chatRequestSchema = z
+    .object({
+        message: z
+            .string()
+            .trim()
+            .min(1, 'message 不能为空')
+            .max(4000, 'message 超长（最多 4000 字符）'),
+        threadId: z.string().regex(THREAD_ID_PATTERN, 'threadId 格式不合法').optional(),
+    })
+    .strict();
+
+export interface AgentRouterOptions {
+    graph: AgentGraph;
+    log?: LogFn;
+}
+
+async function invokeAgent(
+    graph: AgentGraph,
+    message: string,
+    threadId: string,
+    log?: LogFn,
+): Promise<string> {
+    try {
+        const result = await graph.invoke(
+            { messages: [{ role: 'user', content: message }] },
+            { configurable: { thread_id: threadId } },
+        );
+        return lastAiReply(result.messages);
+    } catch (err) {
+        log?.({
+            level: 'error',
+            message: 'agent 运行失败',
+            error: err instanceof Error ? err.message : String(err),
+        });
+        throw new HttpError(502, 'AGENT_ERROR', 'Agent 运行失败');
+    }
+}
+
+export function agentRouter(options: AgentRouterOptions): Router {
+    const router = new Router({ prefix: '/agent' });
+
+    router.post('/chat', async (ctx) => {
+        const body = chatRequestSchema.parse(ctx.request.body);
+        const threadId = body.threadId ?? newThreadId();
+        const reply = await invokeAgent(options.graph, body.message, threadId, options.log);
+        ctx.body = { threadId, reply };
+    });
+
+    return router;
+}
