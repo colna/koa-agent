@@ -1,2 +1,7 @@
 packages:
   - apps/*
+
+# 由 create-next-app 生成（sharp / unrs-resolver 的原生构建脚本跳过即可）
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
