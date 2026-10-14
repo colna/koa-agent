@@ -7,6 +7,11 @@
   "engines": {
     "node": ">=22.5.0"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
@@ -21,6 +26,7 @@
     "@koa/router": "^15.7.0",
     "@langchain/core": "^1.2.17",
     "@langchain/langgraph": "^1.5.0",
+    "@langchain/langgraph-checkpoint-sqlite": "^1.1.0",
     "@langchain/openai": "^1.6.2",
     "koa": "^3.2.1",
     "koa-bodyparser": "^4.4.1",

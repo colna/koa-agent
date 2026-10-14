@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'node:url';
+import { createCheckpointer } from './agent/checkpoint.js';
 import { createAgentGraph } from './agent/graph.js';
 import { createModel } from './agent/model.js';
 import { createApp } from './app.js';
@@ -39,7 +40,10 @@ export function setupGracefulShutdown(
 export async function main(log: LogFn = defaultLog): Promise<RunningServer> {
     loadDotEnv();
     const config = loadConfig();
-    const graph = createAgentGraph({ model: createModel(config) });
+    const graph = createAgentGraph({
+        model: createModel(config),
+        checkpointer: createCheckpointer(config.AGENT_SQLITE_PATH),
+    });
     const app = createApp({ log, routes: [agentRouter({ graph, log })] });
     const running = await startServer(app, config.PORT, config.HOST);
     log({ level: 'info', message: '服务已启动', url: running.url });
