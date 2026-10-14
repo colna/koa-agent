@@ -1,5 +1,7 @@
 node_modules/
 dist/
+.next/
+out/
 coverage/
 *.log
 .env
@@ -7,3 +9,4 @@ coverage/
 !.env.example
 data/
 *.sqlite
+*.sqlite-*

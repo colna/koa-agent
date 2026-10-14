@@ -2,8 +2,7 @@
   "name": "koa-agent",
   "version": "0.1.0",
   "private": true,
-  "description": "Koa 3 + LangGraph 的 HTTP Agent 服务骨架",
-  "type": "module",
+  "description": "Koa 3 + LangGraph Agent 服务 + Next.js 聊天界面（pnpm monorepo）",
   "engines": {
     "node": ">=22.5.0"
   },
@@ -13,32 +12,15 @@
     ]
   },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit",
+    "dev:server": "pnpm --filter @koa-agent/server dev",
+    "dev:web": "pnpm --filter @koa-agent/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "lint": "biome check .",
-    "format": "biome format --write .",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "build": "tsc -p tsconfig.build.json"
-  },
-  "dependencies": {
-    "@koa/router": "^15.7.0",
-    "@langchain/core": "^1.2.17",
-    "@langchain/langgraph": "^1.5.0",
-    "@langchain/langgraph-checkpoint-sqlite": "^1.1.0",
-    "@langchain/openai": "^1.6.2",
-    "koa": "^3.2.1",
-    "koa-bodyparser": "^4.4.1",
-    "zod": "^4.6.7"
+    "format": "biome format --write ."
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
-    "@types/koa": "^3.0.3",
-    "@types/koa-bodyparser": "^4.3.12",
-    "@types/node": "^22.19.15",
-    "tsx": "^4.23.15",
-    "typescript": "~5.9.3",
-    "vitest": "^5.0.4"
+    "@biomejs/biome": "^2.5.15"
   }
 }

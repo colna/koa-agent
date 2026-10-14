@@ -7,6 +7,12 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.5.15
+        version: 2.5.15
+
+  apps/server:
     dependencies:
       '@koa/router':
         specifier: ^15.7.0
@@ -33,9 +39,6 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.5.15
-        version: 2.5.15
       '@types/koa':
         specifier: ^3.0.3
         version: 3.0.3
