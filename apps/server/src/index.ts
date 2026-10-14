@@ -12,11 +12,15 @@ import { pathToFileURL } from 'node:url';
 import { createCheckpointer } from './agent/checkpoint.js';
 import { createAgentGraph } from './agent/graph.js';
 import { createModel } from './agent/model.js';
+import { createSpTools } from './agent/sp-tools.js';
+import { agentTools } from './agent/tools.js';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { defaultLog, type LogFn } from './middleware/logger.js';
 import { agentRouter } from './routes/agent.js';
+import { spRouter } from './routes/sp.js';
 import { type RunningServer, startServer } from './server.js';
+import { SpAdminClient } from './sp/client.js';
 
 /**
  * 把项目根目录的 .env 读进 process.env（Node ≥ 20.12 的 process.loadEnvFile）。
@@ -69,13 +73,23 @@ export function setupGracefulShutdown(
 export async function main(log: LogFn = defaultLog): Promise<RunningServer> {
     loadDotEnv();
     const config = loadConfig();
+    const spClient = new SpAdminClient({
+        baseUrl: config.SP_ADMIN_BASE_URL,
+        token: config.SP_ADMIN_TOKEN,
+    });
+    const spTools = createSpTools({
+        client: spClient,
+        reportDir: config.SP_REPORT_DIR,
+        serverBaseUrl: `http://${config.HOST}:${config.PORT}`,
+    });
     const graph = createAgentGraph({
         model: createModel(config),
         checkpointer: createCheckpointer(config.AGENT_SQLITE_PATH),
+        tools: [...agentTools, ...Object.values(spTools)],
     });
     const app = createApp({
         log,
-        routes: [agentRouter({ graph, log })],
+        routes: [agentRouter({ graph, log }), spRouter({ reportDir: config.SP_REPORT_DIR })],
         corsOrigin: config.CORS_ORIGIN,
     });
     const running = await startServer(app, config.PORT, config.HOST);
