@@ -24,6 +24,9 @@ describe('loadConfig', () => {
         expect(config.HOST).toBe('127.0.0.1');
         expect(config.NODE_ENV).toBe('development');
         expect(config.CORS_ORIGIN).toBe('*');
+        expect(config.SP_ADMIN_BASE_URL).toBe('https://admin-api-dev.sitin.ai');
+        expect(config.SP_ADMIN_TOKEN).toBe('');
+        expect(config.SP_REPORT_DIR).toBe('./data/reports');
         expect(config.OPENAI_BASE_URL).toBe('https://api.openai.com/v1');
         expect(config.OPENAI_MODEL).toBe('gpt-4o-mini');
         expect(config.AGENT_SQLITE_PATH).toBe('./data/agent.sqlite');

@@ -24,6 +24,12 @@ const envSchema = z.object({
     HOST: z.string().min(1).default('127.0.0.1'),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     CORS_ORIGIN: z.string().min(1).default('*'),
+    // ---- SP Agent（minerva BFF）----
+    SP_ADMIN_BASE_URL: z.url().default('https://admin-api-dev.sitin.ai'),
+    /** 自签 minerva JWT；留空则 SP 工具返回配置指引（不阻塞启动）。 */
+    SP_ADMIN_TOKEN: z.string().default(''),
+    /** 报表 / CSV 导出的落盘目录（相对 server 工作目录）。 */
+    SP_REPORT_DIR: z.string().min(1).default('./data/reports'),
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
     OPENAI_MODEL: z.string().min(1).default('gpt-4o-mini'),
