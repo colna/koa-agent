@@ -22,6 +22,7 @@ docs/         # 00 代码导读 + 01~04 项目四件套
 - `GET /agent/threads/:threadId` —— 会话历史
 - `GET /health` —— 健康检查
 - 示例工具：`calculator`（安全求值）/ `current_time`（IANA 时区）
+- SP 运维工具（Agent 可调用，经 minerva BFF）：发信号（双步确认）/ 脚本错误分析与报表 / CSV 导出 / 在线分析
 - SQLite 会话持久化；模型走 OpenAI 兼容端点（OpenAI / DeepSeek / 本地 vLLM）
 
 **web**（apps/web）
@@ -59,6 +60,21 @@ pnpm dev:web
 - **web**：`NEXT_PUBLIC_SERVER_URL`（默认 `http://127.0.0.1:3000`；本地开发无需配置）
 
 > `.env` 仅存本地且被 gitignore，仓库只提交 `.env.example`；测试零真实 Key、零外网。
+
+## SP Agent（social-proxy 运维）
+
+Agent 内置 6 个 SP 工具（直连 minerva BFF）：`sp_send_signal`（**双步确认**：先复述、用户同意后再发）、`sp_query_script_errors`（聚合统计）、`sp_build_error_report`（Markdown 报表）、`sp_export_script_errors_csv`（下载链接走 `GET /sp/reports/:name`）、`sp_online_overview`、`sp_dashboard_query`。
+
+配置（`apps/server/.env`）：
+
+| 变量 | 说明 |
+|---|---|
+| `SP_ADMIN_BASE_URL` | BFF 地址：dev `https://admin-api-dev.sitin.ai` / prod `https://admin-api-prod.sitin.ai` |
+| `SP_ADMIN_TOKEN` | minerva **sessionToken**（获取：登录 admin 后台 → 开发者工具 Console 执行 `localStorage.sessionToken`，或任一请求的 `Authorization` 头去掉 `Bearer `） |
+| `SP_REPORT_DIR` | 报表 / CSV 落盘目录（默认 `./data/reports`） |
+
+> token 权限等同你的账号、且会过期——仅存本地 `.env`，过期后在浏览器重新登录并更新即可。
+> `scripts/make-sp-token.mjs` 是自签方案（需 JWT_SECRET 与所连环境一致）；**对部署的 dev/prod 不适用**（部署 secret 与仓库文件不一致，已实测），保留供本地启动 minerva 的场景。
 
 ## 文档
 

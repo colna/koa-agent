@@ -92,7 +92,7 @@ export class SpAdminClient {
         if (this.token.length === 0) {
             throw new SpClientError(
                 'config',
-                '未配置 SP_ADMIN_TOKEN —— 在 apps/server/.env 填入自签 token（生成方式见 scripts/make-sp-token.mjs 头部注释）',
+                '未配置 SP_ADMIN_TOKEN —— 在 apps/server/.env 填入 minerva 登录后的 sessionToken（浏览器开发者工具 → localStorage.sessionToken），获取步骤见 README「SP Agent」一节',
             );
         }
 
@@ -128,7 +128,7 @@ export class SpAdminClient {
         if (res.status === 401 || res.status === 403) {
             throw new SpClientError(
                 'auth',
-                `BFF 鉴权失败（HTTP ${res.status}）—— 请更新 apps/server/.env 的 SP_ADMIN_TOKEN（可能已过期或 secret 与所连环境不匹配）`,
+                `BFF 鉴权失败（HTTP ${res.status}）—— SP_ADMIN_TOKEN 可能已过期：浏览器重新登录后复制新的 sessionToken 更新 apps/server/.env`,
             );
         }
     }
