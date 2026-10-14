@@ -48,6 +48,24 @@ async function invokeAgent(
     }
 }
 
+function toHistory(messages: BaseMessage[]): { role: 'user' | 'assistant'; content: string }[] {
+    const history: { role: 'user' | 'assistant'; content: string }[] = [];
+    for (const message of messages) {
+        const type = message.getType();
+        if (
+            (type === 'human' || type === 'ai') &&
+            typeof message.content === 'string' &&
+            message.content.length > 0
+        ) {
+            history.push({
+                role: type === 'human' ? 'user' : 'assistant',
+                content: message.content,
+            });
+        }
+    }
+    return history;
+}
+
 export function agentRouter(options: AgentRouterOptions): Router {
     const router = new Router({ prefix: '/agent' });
 
@@ -56,6 +74,21 @@ export function agentRouter(options: AgentRouterOptions): Router {
         const threadId = body.threadId ?? newThreadId();
         const reply = await invokeAgent(options.graph, body.message, threadId, options.log);
         ctx.body = { threadId, reply };
+    });
+
+    router.get('/threads/:threadId', async (ctx) => {
+        const threadId = ctx.params.threadId ?? '';
+        if (!THREAD_ID_PATTERN.test(threadId)) {
+            throw new HttpError(422, 'VALIDATION_ERROR', 'threadId 格式不合法');
+        }
+
+        const state = await options.graph.getState({ configurable: { thread_id: threadId } });
+        const messages = (state.values as { messages?: BaseMessage[] }).messages ?? [];
+        if (messages.length === 0) {
+            throw new HttpError(404, 'NOT_FOUND', '会话不存在');
+        }
+
+        ctx.body = { threadId, messages: toHistory(messages) };
     });
 
     router.post('/chat/stream', async (ctx) => {
