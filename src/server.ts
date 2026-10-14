@@ -3,20 +3,22 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type Koa from 'koa';
 
-export interface TestServer {
-    url: string;
+export interface RunningServer {
     server: Server;
+    port: number;
+    url: string;
     close(): Promise<void>;
 }
 
-export async function startServer(app: Koa): Promise<TestServer> {
-    const server = app.listen(0, '127.0.0.1');
+export async function startServer(app: Koa, port = 0, host = '127.0.0.1'): Promise<RunningServer> {
+    const server = app.listen(port, host);
     await once(server, 'listening');
-    const { port } = server.address() as AddressInfo;
+    const address = server.address() as AddressInfo;
 
     return {
-        url: `http://127.0.0.1:${port}`,
         server,
+        port: address.port,
+        url: `http://${host}:${address.port}`,
         close: () =>
             new Promise<void>((resolve, reject) => {
                 server.close((err) => (err ? reject(err) : resolve()));

@@ -1,10 +1,10 @@
 import Router from '@koa/router';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
-import { startServer, type TestServer } from './testing/server.js';
+import { type RunningServer, startServer } from './server.js';
 
 const logs: Record<string, unknown>[] = [];
-let server: TestServer;
+let server: RunningServer;
 
 beforeAll(async () => {
     const testRouter = new Router();
