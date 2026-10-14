@@ -1,4 +1,4 @@
-# koa-agent
+# Social Proxy Agent
 
 Koa 3 + LangGraph 的 HTTP Agent 服务 + Next.js 聊天界面（**pnpm monorepo**）。
 

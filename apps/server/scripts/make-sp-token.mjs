@@ -8,7 +8,7 @@
  * 因此用对应环境的 JWT_SECRET 自签的 token 即可访问 SP 运维接口。
  *
  * 用法：
- *   node scripts/make-sp-token.mjs --secret <JWT_SECRET> [--userId koa-agent-bot] [--roles "Super Admin"] [--days 30]
+ *   node scripts/make-sp-token.mjs --secret <JWT_SECRET> [--userId social-proxy-agent-bot] [--roles "Super Admin"] [--days 30]
  *
  * JWT_SECRET 取值（sitin-next 仓库，勿写入本仓库任何文件）：
  *   dev:  packages/app-minerva-server/.env.development  → JWT_SECRET
@@ -36,7 +36,7 @@ if (!secret) {
     process.exit(1);
 }
 
-const userId = args.userId ?? 'koa-agent-bot';
+const userId = args.userId ?? 'social-proxy-agent-bot';
 const roles = (args.roles ?? 'Super Admin').split(',').map((role) => role.trim());
 const days = Number(args.days ?? 30);
 

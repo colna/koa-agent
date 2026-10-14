@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-    title: 'koa-agent · 聊天',
+    title: 'Social Proxy Agent · 聊天',
     description: 'Koa 3 + LangGraph Agent 服务的可视化界面（学习项目）',
 };
 

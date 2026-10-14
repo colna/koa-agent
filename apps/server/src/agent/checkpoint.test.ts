@@ -12,7 +12,7 @@ import { FakeChatModel } from '../testing/fake-model.js';
 import { createCheckpointer } from './checkpoint.js';
 import { createAgentGraph } from './graph.js';
 
-const dir = mkdtempSync(join(tmpdir(), 'koa-agent-test-'));
+const dir = mkdtempSync(join(tmpdir(), 'social-proxy-agent-test-'));
 const dbPath = join(dir, 'nested', 'agent.sqlite');
 
 afterAll(() => {

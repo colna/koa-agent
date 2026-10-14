@@ -1,5 +1,5 @@
 {
-  "name": "@koa-agent/server",
+  "name": "@social-proxy-agent/server",
   "version": "0.1.0",
   "private": true,
   "description": "Koa 3 + LangGraph 的 HTTP Agent 服务骨架",

@@ -1,5 +1,5 @@
 {
-  "name": "koa-agent",
+  "name": "social-proxy-agent",
   "version": "0.1.0",
   "private": true,
   "description": "Koa 3 + LangGraph Agent 服务 + Next.js 聊天界面（pnpm monorepo）",
@@ -12,8 +12,8 @@
     ]
   },
   "scripts": {
-    "dev:server": "pnpm --filter @koa-agent/server dev",
-    "dev:web": "pnpm --filter @koa-agent/web dev",
+    "dev:server": "pnpm --filter @social-proxy-agent/server dev",
+    "dev:web": "pnpm --filter @social-proxy-agent/web dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",

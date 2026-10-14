@@ -16,7 +16,7 @@ import { MessageBubble } from '@/components/message-bubble';
 import { type ChatMessage, fetchHealth, fetchHistory, newThreadId, streamChat } from '@/lib/api';
 
 /** localStorage 键带版本号：将来格式变更时可安全迁移/丢弃旧值。 */
-const THREAD_STORAGE_KEY = 'koa-agent:thread-id:v1';
+const THREAD_STORAGE_KEY = 'social-proxy-agent:thread-id:v1';
 
 const EXAMPLES = ['帮我算 1+2*3 等于几', '现在几点了（Asia/Shanghai）', '用 50 字讲个科幻小故事'];
 
@@ -151,7 +151,9 @@ export function Chat() {
                 <div className="mx-auto flex h-12 w-full max-w-[720px] items-center justify-between px-4">
                     <div className="flex items-center gap-2">
                         <StatusDot up={serverUp} />
-                        <span className="text-[13px] font-semibold tracking-tight">koa-agent</span>
+                        <span className="text-[13px] font-semibold tracking-tight">
+                            Social Proxy Agent
+                        </span>
                     </div>
                     <div className="flex items-center gap-3">
                         {threadId.length > 0 ? (
@@ -212,7 +214,7 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
         <div className="flex flex-col items-center gap-8 pt-24 text-center">
             <div>
                 <h1 className="text-[40px] leading-[1.1] font-semibold tracking-[-0.28px]">
-                    koa-agent
+                    Social Proxy Agent
                 </h1>
                 <p className="mt-2 text-[15px] text-ink-secondary">
                     Koa 3 + LangGraph Agent · 工具调用与流式输出
