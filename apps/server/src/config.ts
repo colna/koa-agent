@@ -23,6 +23,7 @@ const envSchema = z.object({
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     HOST: z.string().min(1).default('127.0.0.1'),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    CORS_ORIGIN: z.string().min(1).default('*'),
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
     OPENAI_MODEL: z.string().min(1).default('gpt-4o-mini'),

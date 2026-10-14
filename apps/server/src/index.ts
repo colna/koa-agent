@@ -73,7 +73,11 @@ export async function main(log: LogFn = defaultLog): Promise<RunningServer> {
         model: createModel(config),
         checkpointer: createCheckpointer(config.AGENT_SQLITE_PATH),
     });
-    const app = createApp({ log, routes: [agentRouter({ graph, log })] });
+    const app = createApp({
+        log,
+        routes: [agentRouter({ graph, log })],
+        corsOrigin: config.CORS_ORIGIN,
+    });
     const running = await startServer(app, config.PORT, config.HOST);
     log({ level: 'info', message: '服务已启动', url: running.url });
     setupGracefulShutdown(running, log);

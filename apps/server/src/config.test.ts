@@ -23,6 +23,7 @@ describe('loadConfig', () => {
         expect(typeof config.PORT).toBe('number');
         expect(config.HOST).toBe('127.0.0.1');
         expect(config.NODE_ENV).toBe('development');
+        expect(config.CORS_ORIGIN).toBe('*');
         expect(config.OPENAI_BASE_URL).toBe('https://api.openai.com/v1');
         expect(config.OPENAI_MODEL).toBe('gpt-4o-mini');
         expect(config.AGENT_SQLITE_PATH).toBe('./data/agent.sqlite');
@@ -34,12 +35,14 @@ describe('loadConfig', () => {
             PORT: '8080',
             HOST: '0.0.0.0',
             NODE_ENV: 'production',
+            CORS_ORIGIN: 'http://localhost:3001',
             OPENAI_BASE_URL: 'https://api.deepseek.com/v1',
             OPENAI_MODEL: 'deepseek-chat',
         });
         expect(config.PORT).toBe(8080);
         expect(config.HOST).toBe('0.0.0.0');
         expect(config.NODE_ENV).toBe('production');
+        expect(config.CORS_ORIGIN).toBe('http://localhost:3001');
         expect(config.OPENAI_BASE_URL).toBe('https://api.deepseek.com/v1');
         expect(config.OPENAI_MODEL).toBe('deepseek-chat');
     });

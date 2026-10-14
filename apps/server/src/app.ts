@@ -9,6 +9,7 @@
 import type Router from '@koa/router';
 import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
+import { corsMiddleware } from './middleware/cors.js';
 import { errorMiddleware } from './middleware/error.js';
 import { defaultLog, type LogFn, loggerMiddleware } from './middleware/logger.js';
 import { healthRouter } from './routes/health.js';
@@ -18,6 +19,8 @@ export interface CreateAppOptions {
     log?: LogFn;
     /** 额外路由：生产传 agentRouter()；测试注入探针路由（如故意抛错的路由）。 */
     routes?: Router[];
+    /** CORS 允许的来源（默认 '*'，开发用）；生产可配置为 web 的具体域名。 */
+    corsOrigin?: string;
 }
 
 export function createApp(options: CreateAppOptions = {}): Koa {
@@ -30,6 +33,7 @@ export function createApp(options: CreateAppOptions = {}): Koa {
     // - bodyparser 在路由之前：路由拿到的 ctx.request.body 已是解析好的对象。
     app.use(loggerMiddleware(log));
     app.use(errorMiddleware(log));
+    app.use(corsMiddleware(options.corsOrigin));
     app.use(bodyParser({ enableTypes: ['json'], jsonLimit: '1mb' }));
 
     // 逐个挂载路由：routes() 负责匹配与执行；allowedMethods() 负责
