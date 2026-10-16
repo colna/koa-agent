@@ -10,20 +10,21 @@
  *
  * ## 事件序列（一次模型调用）
  *     message-start               开始一条消息
- *     content-block-start         （文本块开始，可忽略）
- *     content-block-delta {delta:{type:'text-delta', text}}   ← 这就是 token 增量
+ *     content-block-start         （块开始，可忽略）
+ *     content-block-delta {delta:{type:'reasoning-delta', reasoning}}  ← 思考过程增量
+ *     content-block-delta {delta:{type:'text-delta', text}}            ← 正文 token 增量
  *     content-block-delta ...
  *     content-block-finish
  *     message-finish              一条消息结束
  *
  * ## 为什么维护 current / last 两个缓冲？
  * 一次图执行可能有多次模型调用（工具轮 + 最终回答轮）：
- * - `current`：当前这条消息累积的文本；
+ * - `current`：当前这条消息累积的**正文文本**（reasoning 不参与）；
  * - `last`：**已完成**的上一条消息文本。
  * 工具轮里模型可能先说一句话（如「我先算一下」）再去调工具 —— 那是过程文本；
  * 最终要吐给用户的 `done.reply` 应该是最后一条已完结消息的全文，
  * 所以 `message-start` 重置 current、`message-finish` 把 current 提交给 last。
- * （逐 token 的 `onDelta` 回调则照常实时外发 —— 用户能看到全部生成过程。）
+ * （逐 token 的 `onDelta` / `onReasoning` 回调则照常实时外发 —— 用户能看到全部生成过程。）
  */
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { ChatModelStreamEvent } from '@langchain/core/language_models/event';
@@ -36,8 +37,14 @@ export class TokenStreamHandler extends BaseCallbackHandler {
     private current = '';
     private last = '';
 
-    /** onDelta：每收到一个文本分片回调一次（路由里用它写 SSE message.delta）。 */
-    constructor(private readonly onDelta: (text: string) => void) {
+    /**
+     * onDelta：正文文本分片（路由写 SSE message.delta）。
+     * onReasoning：推理/思考分片（路由写 SSE reasoning.delta；可选）。
+     */
+    constructor(
+        private readonly onDelta: (text: string) => void,
+        private readonly onReasoning?: (text: string) => void,
+    ) {
         super();
     }
 
@@ -47,10 +54,15 @@ export class TokenStreamHandler extends BaseCallbackHandler {
                 this.current = ''; // 新消息开始，重置累积
                 break;
             case 'content-block-delta':
-                // 只关心文本增量；忽略 reasoning / tool_call 等其他块类型
                 if (event.delta.type === 'text-delta' && event.delta.text.length > 0) {
                     this.current += event.delta.text;
                     this.onDelta(event.delta.text);
+                } else if (
+                    event.delta.type === 'reasoning-delta' &&
+                    event.delta.reasoning.length > 0
+                ) {
+                    // 思考过程只外发展示，不参与 reply 的「最终答复」判定
+                    this.onReasoning?.(event.delta.reasoning);
                 }
                 break;
             case 'message-finish':

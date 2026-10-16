@@ -133,7 +133,20 @@ export class FakeChatModel extends BaseChatModel {
             });
         }
 
-        // 3) 兜底：保证至少一个分片（见上方注释）
+        // 3) usage 分片（若有）：模拟 provider 的 include_usage —— 末尾补一个仅含 usage 的分片，
+        // 聚合时会被并入最终消息（core 的 chunk 合并会把 usage 相加）
+        if (message.usage_metadata !== undefined) {
+            yielded = true;
+            yield new ChatGenerationChunk({
+                text: '',
+                message: new AIMessageChunk({
+                    content: '',
+                    usage_metadata: message.usage_metadata,
+                }),
+            });
+        }
+
+        // 4) 兜底：保证至少一个分片（见上方注释）
         if (!yielded) {
             yield new ChatGenerationChunk({
                 text: '',

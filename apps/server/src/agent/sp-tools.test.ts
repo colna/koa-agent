@@ -43,6 +43,17 @@ function buildTools(baseUrl: string) {
     return createSpTools({ client, reportDir: dir, serverBaseUrl: 'http://127.0.0.1:3999' });
 }
 
+function buildToolsWithProd(devUrl: string, prodUrl: string) {
+    const client = new SpAdminClient({ baseUrl: devUrl, token: 'test-token' });
+    const prodClient = new SpAdminClient({ baseUrl: prodUrl, token: 'test-token' });
+    return createSpTools({
+        client,
+        prodClient,
+        reportDir: dir,
+        serverBaseUrl: 'http://127.0.0.1:3999',
+    });
+}
+
 const errorItems = [
     {
         id: 'e1',
@@ -141,7 +152,7 @@ describe('sp_export_script_errors_csv', () => {
         const data = JSON.parse(text) as { status: string; 文件: string; 下载链接: string };
 
         expect(data.status).toBe('exported');
-        expect(data.文件).toMatch(/^script-errors_\d{8}_\d{6}\.csv$/);
+        expect(data.文件).toMatch(/^script-errors_dev_\d{8}_\d{6}\.csv$/);
         expect(data.下载链接).toBe(`http://127.0.0.1:3999/sp/reports/${data.文件}`);
         expect(readFileSync(join(dir, data.文件), 'utf8')).toBe(csv);
     });
@@ -304,5 +315,93 @@ describe('sp_send_signal（双步确认）', () => {
         })) as string;
 
         expect(text).toContain('SP 调用失败（auth）');
+    });
+});
+
+describe('env 环境区分（dev / prod）', () => {
+    it('env=prod 未配置 prodClient → 返回配置指引（不发请求）', async () => {
+        const tools = buildTools('http://127.0.0.1:1'); // 不可达：若发请求会得到连接错误而非指引
+        const text = (await tools.queryScriptErrors.invoke({ env: 'prod' })) as string;
+        expect(text).toContain('SP_ADMIN_TOKEN_PROD');
+        expect(text).toContain('env=dev');
+    });
+
+    it('env=prod 且已配置 → 请求打到线上 server；缺省 env=dev → dev server', async () => {
+        const devUrl = await startMockServer((_req, res) => {
+            json(res, { success: true, data: { items: [], total: 7 } });
+        });
+        const prodUrl = await startMockServer((_req, res) => {
+            json(res, { success: true, data: { items: [], total: 42 } });
+        });
+        const tools = buildToolsWithProd(devUrl, prodUrl);
+
+        const prodData = JSON.parse(
+            (await tools.queryScriptErrors.invoke({ env: 'prod' })) as string,
+        ) as { 环境: string; 总条数: number };
+        expect(prodData.环境).toBe('prod');
+        expect(prodData.总条数).toBe(42);
+
+        const devData = JSON.parse((await tools.queryScriptErrors.invoke({})) as string) as {
+            环境: string;
+            总条数: number;
+        };
+        expect(devData.环境).toBe('dev');
+        expect(devData.总条数).toBe(7);
+    });
+
+    it('看板/在线查询同样按 env 路由', async () => {
+        let seenProdPath = '';
+        const prodUrl = await startMockServer((req, res) => {
+            seenProdPath = req.url ?? '';
+            json(res, { success: true, data: [{ signalCount: 5 }] });
+        });
+        const tools = buildToolsWithProd('http://127.0.0.1:1', prodUrl);
+        const text = (await tools.dashboardQuery.invoke({
+            query: 'overview',
+            env: 'prod',
+        })) as string;
+        expect(seenProdPath).toContain('/api/social-proxy/v3/dashboard/overview');
+        expect(JSON.parse(text)).toMatchObject({ env: 'prod' });
+    });
+
+    it('CSV 导出文件名带环境前缀', async () => {
+        const prodUrl = await startMockServer((_req, res) => {
+            res.writeHead(200, { 'content-type': 'text/csv' });
+            res.end('a,b\n');
+        });
+        const tools = buildToolsWithProd('http://127.0.0.1:1', prodUrl);
+        const data = JSON.parse(
+            (await tools.exportErrorsCsv.invoke({ env: 'prod' })) as string,
+        ) as { 环境: string; 文件: string };
+        expect(data.环境).toBe('prod');
+        expect(data.文件).toMatch(/^script-errors_prod_\d{8}_\d{6}\.csv$/);
+    });
+
+    it('信号待确认摘要含目标环境；confirm=false 不请求对应环境', async () => {
+        let hits = 0;
+        const prodUrl = await startMockServer((_req, res) => {
+            hits += 1;
+            json(res, { success: true, data: {} });
+        });
+        const tools = buildToolsWithProd('http://127.0.0.1:1', prodUrl);
+        const text = (await tools.sendSignal.invoke({
+            type: 'KEEPALIVE_TICK',
+            creatorId: 'c1',
+            env: 'prod',
+        })) as string;
+        const data = JSON.parse(text) as { status: string; 待发送信号: { 环境: string } };
+        expect(data.status).toBe('pending_confirmation');
+        expect(data.待发送信号.环境).toBe('prod');
+        expect(hits).toBe(0);
+    });
+
+    it('signal env=prod 未配置 → 配置指引（先于待确认摘要返回）', async () => {
+        const tools = buildTools('http://127.0.0.1:1');
+        const text = (await tools.sendSignal.invoke({
+            type: 'KEEPALIVE_TICK',
+            creatorId: 'c1',
+            env: 'prod',
+        })) as string;
+        expect(text).toContain('SP_ADMIN_TOKEN_PROD');
     });
 });

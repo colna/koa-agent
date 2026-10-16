@@ -67,4 +67,37 @@ describe('TokenStreamHandler', () => {
         expect(deltas).toEqual([]);
         expect(handler.reply).toBe('');
     });
+
+    it('reasoning-delta → onReasoning 外发；不混入 reply/正文', () => {
+        const deltas: string[] = [];
+        const reasonings: string[] = [];
+        const handler = new TokenStreamHandler(
+            (text) => deltas.push(text),
+            (text) => reasonings.push(text),
+        );
+
+        handler.handleChatModelStreamEvent(evt({ event: 'message-start', id: 'm1' }), 'run1');
+        handler.handleChatModelStreamEvent(
+            evt({
+                event: 'content-block-delta',
+                index: 0,
+                delta: { type: 'reasoning-delta', reasoning: '先分析问题' },
+            }),
+            'run1',
+        );
+        handler.handleChatModelStreamEvent(
+            evt({
+                event: 'content-block-delta',
+                index: 1,
+                delta: { type: 'text-delta', text: '答案是 7' },
+            }),
+            'run1',
+        );
+        handler.handleChatModelStreamEvent(evt({ event: 'message-finish' }), 'run1');
+
+        expect(reasonings.join('')).toBe('先分析问题');
+        expect(deltas.join('')).toBe('答案是 7');
+        // reasoning 不参与「最终答复」判定
+        expect(handler.reply).toBe('答案是 7');
+    });
 });
