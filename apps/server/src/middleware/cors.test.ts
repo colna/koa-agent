@@ -22,18 +22,19 @@ afterAll(async () => {
 });
 
 describe('corsMiddleware', () => {
-    it('OPTIONS 预检 → 204 + 允许方法/头', async () => {
-        const res = await fetch(`${server.url}/agent/chat`, {
+    it('OPTIONS 预检 → 204 + 允许方法/头（DELETE 必须放行：会话删除是跨域请求）', async () => {
+        const res = await fetch(`${server.url}/agent/threads/t_x`, {
             method: 'OPTIONS',
             headers: {
                 origin: 'http://localhost:3001',
-                'access-control-request-method': 'POST',
+                'access-control-request-method': 'DELETE',
                 'access-control-request-headers': 'content-type',
             },
         });
         expect(res.status).toBe(204);
         expect(res.headers.get('access-control-allow-origin')).toBe('*');
         expect(res.headers.get('access-control-allow-methods')).toContain('POST');
+        expect(res.headers.get('access-control-allow-methods')).toContain('DELETE');
         expect(res.headers.get('access-control-allow-headers')).toContain('Content-Type');
     });
 

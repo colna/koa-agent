@@ -5,6 +5,7 @@
  */
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createChartTool } from '../agent/chart-tool.js';
 import { createAgentGraph } from '../agent/graph.js';
 import { createApp } from '../app.js';
 import { type RunningServer, startServer } from '../server.js';
@@ -20,7 +21,13 @@ function toolCallResponse(): AIMessage {
 }
 
 const model = new FakeChatModel({
-    responses: [toolCallResponse(), '回显完成：echo:hello', '你好世界一二三'],
+    responses: [
+        toolCallResponse(),
+        '回显完成：echo:hello',
+        toolCallResponse(),
+        '回显完成：echo:hello',
+        '你好世界一二三',
+    ],
 });
 let server: RunningServer;
 
@@ -90,6 +97,33 @@ describe('POST /agent/chat/stream', () => {
         ).toBe(true);
     });
 
+    it('工具执行发 tool.start / tool.end 帧（含工具名与结果）', async () => {
+        const res = await postStream({
+            message: '帮我回显 hello2',
+            threadId: 't_stream_toolframe',
+        });
+        const frames = parseSse(await res.text());
+
+        const start = frames.find((frame) => frame.event === 'tool.start');
+        expect(start).toBeDefined();
+        const startData = JSON.parse((start as SseFrame).data) as {
+            calls: { name: string; args: string }[];
+        };
+        expect(startData.calls[0]?.name).toBe('echo');
+
+        const end = frames.find((frame) => frame.event === 'tool.end');
+        expect(end).toBeDefined();
+        const endData = JSON.parse((end as SseFrame).data) as {
+            results: { name: string; result: string }[];
+        };
+        expect(endData.results[0]).toMatchObject({ name: 'echo', result: 'echo:hello' });
+
+        // 帧序：tool.start 在 delta 之前、tool.end 在 done 之前
+        const order = frames.map((frame) => frame.event);
+        expect(order.indexOf('tool.start')).toBeLessThan(order.indexOf('message.delta'));
+        expect(order.indexOf('tool.end')).toBeLessThan(order.indexOf('message.done'));
+    });
+
     it('普通回复流式输出，done.reply 与 delta 拼接一致', async () => {
         const res = await postStream({ message: '说点长的', threadId: 't_stream_plain' });
         const frames = parseSse(await res.text());
@@ -116,5 +150,94 @@ describe('POST /agent/chat/stream', () => {
         expect(data.code).toBe('AGENT_ERROR');
         expect(data.message).not.toContain('用尽');
         expect(frames.some((frame) => frame.event === 'message.done')).toBe(false);
+    });
+
+    it('render_chart 工具产出 → chart 帧带完整规格', async () => {
+        // 自包含图谱（该用例需要独立脚本队列）
+        const chartModel = new FakeChatModel({
+            responses: [
+                new AIMessage({
+                    content: '',
+                    tool_calls: [
+                        {
+                            name: 'render_chart',
+                            args: {
+                                kind: 'bar',
+                                title: '每周错误对比',
+                                categories: ['w1', 'w2'],
+                                series: [{ name: '错误数', data: [12, 7] }],
+                            },
+                            id: 'call_chart',
+                            type: 'tool_call',
+                        },
+                    ],
+                }),
+                '图表已生成，见上方。',
+            ],
+        });
+        const graph = createAgentGraph({
+            model: chartModel,
+            systemPrompt: '',
+            tools: [createChartTool()],
+        });
+        const app = createApp({ log: () => {}, routes: [agentRouter({ graph })] });
+        const local = await startServer(app);
+        try {
+            const res = await fetch(`${local.url}/agent/chat/stream`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ message: '画个图', threadId: 't_chart_frame' }),
+            });
+            const frames = parseSse(await res.text());
+
+            const chart = frames.find((frame) => frame.event === 'chart');
+            expect(chart).toBeDefined();
+            const data = JSON.parse((chart as SseFrame).data) as {
+                spec: { kind: string; title: string; categories: string[] };
+            };
+            expect(data.spec.kind).toBe('bar');
+            expect(data.spec.title).toBe('每周错误对比');
+            expect(data.spec.categories).toEqual(['w1', 'w2']);
+
+            const done = frames.find((frame) => frame.event === 'message.done');
+            expect(done).toBeDefined();
+        } finally {
+            await local.close();
+        }
+    });
+
+    it('模型返回 usage → 追加 usage 帧（token 消耗展示）', async () => {
+        const usageModel = new FakeChatModel({
+            responses: [
+                new AIMessage({
+                    content: '答案',
+                    usage_metadata: { input_tokens: 100, output_tokens: 20, total_tokens: 120 },
+                }),
+            ],
+        });
+        const graph = createAgentGraph({ model: usageModel, systemPrompt: '' });
+        const app = createApp({ log: () => {}, routes: [agentRouter({ graph })] });
+        const local = await startServer(app);
+        try {
+            const res = await fetch(`${local.url}/agent/chat/stream`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ message: '说句话', threadId: 't_usage_frame' }),
+            });
+            const frames = parseSse(await res.text());
+
+            const usage = frames.find((frame) => frame.event === 'usage');
+            expect(usage).toBeDefined();
+            expect(JSON.parse((usage as SseFrame).data)).toEqual({
+                inputTokens: 100,
+                outputTokens: 20,
+                totalTokens: 120,
+            });
+            // 帧序：usage 在 done 之前
+            const order = frames.map((frame) => frame.event);
+            expect(order.indexOf('usage')).toBeLessThan(order.indexOf('message.done'));
+        } finally {
+            await local.close();
+        }
     });
 });

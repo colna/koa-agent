@@ -23,7 +23,7 @@ export function corsMiddleware(origin = '*'): Middleware {
         }
 
         if (ctx.method === 'OPTIONS') {
-            ctx.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+            ctx.set('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
             ctx.set('Access-Control-Allow-Headers', 'Content-Type');
             ctx.set('Access-Control-Max-Age', '86400');
             ctx.status = 204;

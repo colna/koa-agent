@@ -3,10 +3,12 @@
  * 自动/自定义 threadId、多轮上下文、422（缺字段 / 非法 threadId / 未知字段）、
  * 502 AGENT_ERROR。注意：脚本响应按用例执行顺序消费，新增用例留意队列顺序。
  */
+import { AIMessage } from '@langchain/core/messages';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAgentGraph } from '../agent/graph.js';
 import { createApp } from '../app.js';
 import { type RunningServer, startServer } from '../server.js';
+import { echoTool } from '../testing/echo-tool.js';
 import { FakeChatModel } from '../testing/fake-model.js';
 import { agentRouter } from './agent.js';
 
@@ -93,5 +95,47 @@ describe('POST /agent/chat', () => {
         const body = (await res.json()) as { error: { code: string; message: string } };
         expect(body.error.code).toBe('AGENT_ERROR');
         expect(body.error.message).not.toContain('用尽');
+    });
+});
+
+describe('POST /agent/chat（token 用量）', () => {
+    it('模型返回 usage → 响应带本轮 usage（工具轮累加）', async () => {
+        const usageModel = new FakeChatModel({
+            responses: [
+                new AIMessage({
+                    content: '',
+                    tool_calls: [
+                        { name: 'echo', args: { text: 'x' }, id: 'c_usage', type: 'tool_call' },
+                    ],
+                    usage_metadata: { input_tokens: 100, output_tokens: 10, total_tokens: 110 },
+                }),
+                new AIMessage({
+                    content: '最终答复',
+                    usage_metadata: { input_tokens: 200, output_tokens: 30, total_tokens: 230 },
+                }),
+            ],
+        });
+        const graph = createAgentGraph({
+            model: usageModel,
+            systemPrompt: '',
+            tools: [echoTool],
+        });
+        const app = createApp({ log: () => {}, routes: [agentRouter({ graph })] });
+        const local = await startServer(app);
+        try {
+            const res = await fetch(`${local.url}/agent/chat`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ message: '带工具的一轮', threadId: 't_usage_sync' }),
+            });
+            const body = (await res.json()) as {
+                reply: string;
+                usage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+            };
+            expect(body.reply).toBe('最终答复');
+            expect(body.usage).toEqual({ inputTokens: 300, outputTokens: 40, totalTokens: 340 });
+        } finally {
+            await local.close();
+        }
     });
 });
