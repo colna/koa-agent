@@ -9,10 +9,21 @@
  * （见 src/index.test.ts：入口守卫保证 import 本文件不会真的启动服务）。
  */
 import { pathToFileURL } from 'node:url';
+import { createByteplusTool } from './agent/byteplus.js';
+import { createChartTool } from './agent/chart-tool.js';
 import { createCheckpointer } from './agent/checkpoint.js';
-import { createAgentGraph } from './agent/graph.js';
+import { createAgentGraph, DEFAULT_SYSTEM_PROMPT } from './agent/graph.js';
+import { createKbTools } from './agent/kb-tools.js';
 import { createModel } from './agent/model.js';
+import {
+    createSlsLogTool,
+    loadAliyunOAuthCreds,
+    loadSkills,
+    loadSlsCreds,
+    skillsPromptSection,
+} from './agent/skills.js';
 import { createSpTools } from './agent/sp-tools.js';
+import { createThreadStore } from './agent/threads.js';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { defaultLog, type LogFn } from './middleware/logger.js';
@@ -76,19 +87,111 @@ export async function main(log: LogFn = defaultLog): Promise<RunningServer> {
         baseUrl: config.SP_ADMIN_BASE_URL,
         token: config.SP_ADMIN_TOKEN,
     });
+    // 线上（prod）环境 client：token 未配置时 env=prod 的查询返回配置指引（不阻塞启动）
+    const spProdClient =
+        config.SP_ADMIN_TOKEN_PROD.length > 0
+            ? new SpAdminClient({
+                  baseUrl: config.SP_ADMIN_BASE_URL_PROD,
+                  token: config.SP_ADMIN_TOKEN_PROD,
+              })
+            : null;
+    if (spProdClient === null) {
+        log({
+            level: 'warn',
+            message: 'SP 线上 token 未配置（SP_ADMIN_TOKEN_PROD），env=prod 的查询将返回配置指引',
+        });
+    }
     const spTools = createSpTools({
         client: spClient,
+        prodClient: spProdClient,
         reportDir: config.SP_REPORT_DIR,
         serverBaseUrl: `http://${config.HOST}:${config.PORT}`,
     });
+
+    // sls-logs skill 凭证：OAuth profile（动态 STS，自动续期）优先，其次静态 ~/.sls_creds。
+    // 每次工具调用时重新解析（STS 会过期）；启动时先探测一次，失败只告警不阻塞。
+    const resolveSlsCreds = async (): Promise<Record<string, string>> => {
+        const base = {
+            SLS_ENDPOINT: config.SLS_ENDPOINT,
+            SLS_PROJECT: config.SLS_PROJECT,
+            SLS_LOGSTORE: config.SLS_LOGSTORE,
+        };
+        if (config.SLS_ALIYUN_PROFILE.length > 0) {
+            return {
+                ...base,
+                ...(await loadAliyunOAuthCreds({
+                    profile: config.SLS_ALIYUN_PROFILE,
+                    configPath: config.SLS_ALIYUN_CONFIG_PATH,
+                    aliyunBin: config.SLS_ALIYUN_BIN,
+                })),
+            };
+        }
+        const fileCreds = loadSlsCreds(config.SLS_CREDS_PATH);
+        if (fileCreds === null) {
+            throw new Error(
+                `SLS 凭证未配置：创建 ${config.SLS_CREDS_PATH} 或设置 SLS_ALIYUN_PROFILE（OAuth）`,
+            );
+        }
+        return { ...base, ...fileCreds };
+    };
+    const slsLogTool = createSlsLogTool({
+        pythonBin: config.SLS_PYTHON_BIN,
+        credsProvider: resolveSlsCreds,
+        prodProject: config.SLS_PROJECT_PROD,
+        prodLogstore: config.SLS_LOGSTORE_PROD,
+    });
+    try {
+        await resolveSlsCreds();
+    } catch (err) {
+        log({
+            level: 'warn',
+            message: `SLS 凭证未就绪（${err instanceof Error ? err.message : String(err)}），sls_query_log 将返回配置指引`,
+        });
+    }
+
+    // skill 能力索引拼进 system prompt（渐进式披露：只进 name/description）
+    const systemPrompt = DEFAULT_SYSTEM_PROMPT + skillsPromptSection(loadSkills());
+
+    // BytePlus（DataFinder）查询工具：凭证缺省不阻塞启动（工具运行时给指引）
+    const byteplusTool = createByteplusTool({
+        nodeBin: config.BYTEPLUS_NODE_BIN,
+        accessKey: config.BYTEPLUS_ACCESS_KEY,
+        secretKey: config.BYTEPLUS_SECRET_KEY,
+        baseUrl: config.BYTEPLUS_BASE_URL,
+        envFile: config.BYTEPLUS_ENV_FILE,
+    });
+    if (config.BYTEPLUS_ACCESS_KEY.length === 0 && config.BYTEPLUS_ENV_FILE.length === 0) {
+        log({
+            level: 'warn',
+            message:
+                'BytePlus 凭证未配置（BYTEPLUS_ACCESS_KEY / BYTEPLUS_ENV_FILE），byteplus_query 将返回配置指引',
+        });
+    }
+
+    // 知识库检索（RAG）：配置了 KB_MEMO_DIR 才注册工具（未配置时工具不存在，不污染工具面）
+    const kbTools =
+        config.KB_MEMO_DIR.length > 0 ? createKbTools({ memoDir: config.KB_MEMO_DIR }) : null;
+
+    const checkpointer = createCheckpointer(config.AGENT_SQLITE_PATH);
     const graph = createAgentGraph({
         model: createModel(config),
-        checkpointer: createCheckpointer(config.AGENT_SQLITE_PATH),
-        tools: [...Object.values(spTools)],
+        checkpointer,
+        systemPrompt,
+        maxInputTokens: config.AGENT_MAX_INPUT_TOKENS,
+        tools: [
+            ...Object.values(spTools),
+            slsLogTool,
+            byteplusTool,
+            createChartTool(),
+            ...(kbTools !== null ? Object.values(kbTools) : []),
+        ],
     });
     const app = createApp({
         log,
-        routes: [agentRouter({ graph, log }), spRouter({ reportDir: config.SP_REPORT_DIR })],
+        routes: [
+            agentRouter({ graph, log, threads: createThreadStore(checkpointer) }),
+            spRouter({ reportDir: config.SP_REPORT_DIR }),
+        ],
         corsOrigin: config.CORS_ORIGIN,
     });
     const running = await startServer(app, config.PORT, config.HOST);

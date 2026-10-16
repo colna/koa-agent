@@ -25,15 +25,52 @@ const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     CORS_ORIGIN: z.string().min(1).default('*'),
     // ---- SP Agent（minerva BFF）----
+    /** dev（默认）环境：base + token。 */
     SP_ADMIN_BASE_URL: z.url().default('https://admin-api-dev.sitin.ai'),
     /** 自签 minerva JWT；留空则 SP 工具返回配置指引（不阻塞启动）。 */
     SP_ADMIN_TOKEN: z.string().default(''),
+    /** prod（线上）环境：token 留空则 env=prod 的查询返回配置指引（工具带 env 参数区分环境）。 */
+    SP_ADMIN_BASE_URL_PROD: z.url().default('https://admin-api-prod.sitin.ai'),
+    SP_ADMIN_TOKEN_PROD: z.string().default(''),
     /** 报表 / CSV 导出的落盘目录（相对 server 工作目录）。 */
     SP_REPORT_DIR: z.string().min(1).default('./data/reports'),
+    // ---- SLS 日志查询（sls-logs skill）----
+    /** 查询脚本 python（本机 Homebrew python 不可用，默认系统 python3）。 */
+    SLS_PYTHON_BIN: z.string().min(1).default('/usr/bin/python3'),
+    /** SLS 连接信息（与 sls-logs SKILL.md 预置一致；文件凭证模式下可被 ~/.sls_creds 覆盖）。 */
+    SLS_ENDPOINT: z.string().min(1).default('us-west-1.log.aliyuncs.com'),
+    SLS_PROJECT: z.string().min(1).default('dev-presence-service-log'),
+    SLS_LOGSTORE: z.string().min(1).default('dora-dev-stdout'),
+    /** 线上（prod）环境（env=prod 时使用；与 dev 同账号、同 endpoint）。 */
+    SLS_PROJECT_PROD: z.string().default('prod-presence-service-log'),
+    SLS_LOGSTORE_PROD: z.string().default('dora-prod-stdout'),
+    /** 静态凭证文件路径；支持 ~/ 前缀（HOME 展开）。 */
+    SLS_CREDS_PATH: z.string().min(1).default('~/.sls_creds'),
+    /** 阿里云 CLI OAuth profile 名（设置后走动态 STS 凭证并自动续期；空 = 用静态凭证文件）。 */
+    SLS_ALIYUN_PROFILE: z.string().default(''),
+    /** aliyun CLI 的 config.json 路径（~/ 展开）。 */
+    SLS_ALIYUN_CONFIG_PATH: z.string().min(1).default('~/.aliyun/config.json'),
+    /** aliyun CLI 可执行文件（PATH 找不到时给绝对路径，如 /opt/homebrew/bin/aliyun）。 */
+    SLS_ALIYUN_BIN: z.string().min(1).default('aliyun'),
+    // ---- BytePlus（DataFinder）查询（byteplus-query skill）----
+    /** node 可执行文件（PATH 找不到时给绝对路径）。 */
+    BYTEPLUS_NODE_BIN: z.string().min(1).default('node'),
+    /** 凭证其一：直接给 AK/SK；留空则从 BYTEPLUS_ENV_FILE 的 dotenv 读取。 */
+    BYTEPLUS_ACCESS_KEY: z.string().default(''),
+    BYTEPLUS_SECRET_KEY: z.string().default(''),
+    /** 凭证其二：dotenv 文件路径（KEY=VALUE），支持 ~/ 展开。 */
+    BYTEPLUS_ENV_FILE: z.string().default(''),
+    /** API 基址覆盖（默认 https://analytics.byteplusapi.com）。 */
+    BYTEPLUS_BASE_URL: z.string().default(''),
+    // ---- 知识库检索（RAG，colna-memo）----
+    /** colna-memo 根目录（含 ./colna CLI 与 memory/）；留空则不注册 kb_search/kb_read。 */
+    KB_MEMO_DIR: z.string().default(''),
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
     OPENAI_MODEL: z.string().min(1).default('gpt-4o-mini'),
     AGENT_SQLITE_PATH: z.string().min(1).default('./data/agent.sqlite'),
+    /** 送模型的上下文 token 预算（粗略估算）；超出的旧轮次不进模型输入。 */
+    AGENT_MAX_INPUT_TOKENS: z.coerce.number().int().min(1000).max(1_000_000).default(48_000),
 });
 
 /** 由 schema 推导出的配置类型：业务代码只依赖它，不直接碰 process.env。 */
