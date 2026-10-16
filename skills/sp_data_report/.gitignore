@@ -1,0 +1,6 @@
+# 绝不提交 Cookie / 凭证样本（curl 含 DMS 登录态）
+curl*.txt
+*.cookie
+# 生成产物（含业务数据；按需本地生成）
+sp_report*.html
+sp_report_data.json

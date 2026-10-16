@@ -1,0 +1,5 @@
+# 绝不提交任何 Cookie / 凭证
+cookie*.txt
+*.cookie
+curl*.txt
+*.secret
