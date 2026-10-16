@@ -9,8 +9,10 @@
  * - 安全：react-markdown 默认不渲染原始 HTML（无 innerHTML 注入面）；
  *   所有链接统一 `target="_blank" rel="noreferrer"`；
  * - GFM 扩展（表格、删除线、任务列表）由 remark-gfm 提供；
- * - 表格外层包横向滚动容器，窄屏不撑破气泡。
+ * - 表格外层包横向滚动容器，窄屏不撑破气泡；
+ * - 代码块右上角悬停出现「复制」按钮（直接取 pre 的 innerText，不依赖语法高亮结构）。
  */
+import { useRef, useState } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -49,11 +51,7 @@ const components: Components = {
         ) : (
             <code className="rounded bg-ink/5 px-1 py-0.5 font-mono text-[0.9em]">{children}</code>
         ),
-    pre: ({ children }) => (
-        <pre className="my-2 overflow-x-auto rounded-lg bg-ink/5 p-3 font-mono text-[13px] leading-relaxed">
-            {children}
-        </pre>
-    ),
+    pre: CodeBlock,
     table: ({ children }) => (
         <div className="my-2 overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">{children}</table>
@@ -68,6 +66,44 @@ const components: Components = {
         <td className="border-b border-hairline px-2.5 py-1.5 align-top">{children}</td>
     ),
 };
+
+/** 代码块：pre + 悬停「复制」按钮。 */
+function CodeBlock({ children }: { children?: React.ReactNode }) {
+    const ref = useRef<HTMLPreElement | null>(null);
+    const [copied, setCopied] = useState(false);
+
+    async function copy() {
+        const text = (ref.current?.innerText ?? '').trimEnd();
+        if (text.length === 0) {
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1200);
+        } catch {
+            // 剪贴板不可用：静默失败
+        }
+    }
+
+    return (
+        <div className="group/code relative my-2">
+            <button
+                type="button"
+                onClick={copy}
+                className="absolute top-2 right-2 rounded-full bg-white/85 px-2 py-0.5 text-[11px] text-ink-secondary opacity-0 backdrop-blur transition group-hover/code:opacity-100 hover:text-ink focus-visible:opacity-100"
+            >
+                {copied ? '已复制' : '复制'}
+            </button>
+            <pre
+                ref={ref}
+                className="overflow-x-auto rounded-lg bg-ink/5 p-3 font-mono text-[13px] leading-relaxed"
+            >
+                {children}
+            </pre>
+        </div>
+    );
+}
 
 export function MarkdownContent({ text }: { text: string }) {
     return (

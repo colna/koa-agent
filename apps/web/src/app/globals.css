@@ -17,9 +17,8 @@
 
     --shadow-card: 3px 5px 30px 0 rgba(0, 0, 0, 0.12);
 
-    /* 微动画：消息出现 + 流式光标闪烁 */
+    /* 微动画：消息出现 */
     --animate-rise: rise 0.22s ease-out both;
-    --animate-blink: blink 1.1s steps(2, start) infinite;
 
     @keyframes rise {
         from {
@@ -31,14 +30,48 @@
             translate: 0 0;
         }
     }
-
-    @keyframes blink {
-        50% {
-            opacity: 0;
-        }
-    }
 }
 
 ::selection {
     background: rgba(0, 113, 227, 0.2);
+}
+
+/* Apple 风格细节：overlay 式细滚动条（macOS 观感） */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.16);
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.28);
+    background-clip: content-box;
+}
+
+/* 键盘可达性：按钮/链接的焦点环用 Apple Blue（鼠标点击不显示） */
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid rgba(0, 113, 227, 0.9);
+    outline-offset: 2px;
+}
+
+html {
+    color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

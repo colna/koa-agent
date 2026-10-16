@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
     title: 'Social Proxy Agent · 聊天',
-    description: 'Koa 3 + LangGraph Agent 服务的可视化界面（学习项目）',
+    description: 'SP 运维 Agent：查日志 / 看板 / 报表的对话界面（Koa 3 + LangGraph）',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
