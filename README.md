@@ -18,17 +18,24 @@ docs/         # 00 代码导读 + 01~04 项目四件套
 **server**（apps/server）
 
 - `POST /agent/chat` —— 同步对话（多轮上下文）
-- `POST /agent/chat/stream` —— SSE 逐 token 流式
+- `POST /agent/chat/stream` —— SSE 逐 token 流式（含 tool.start / tool.end 过程帧）
+- `GET /agent/threads` —— 会话列表（侧栏用：预览 / 条数 / 最后活跃）
 - `GET /agent/threads/:threadId` —— 会话历史
+- `POST /agent/threads/:threadId/rewind` —— 撤回最后一轮问答（改 checkpoint 状态）
+- `DELETE /agent/threads/:threadId` —— 删除会话
 - `GET /health` —— 健康检查
 - SP 运维工具（Agent 可调用，经 minerva BFF）：发信号（双步确认）/ 脚本错误分析与报表 / CSV 导出 / 在线分析
+- Skill 工具：`sls_query_log`（阿里云 SLS 日志，凭证支持 `~/.sls_creds` 或 aliyun CLI OAuth 自动续期）、`byteplus_query`（BytePlus/DataFinder 只读查询，见 `skills/`）
+- 图表工具：`render_chart`（适合可视化时，Agent 直接输出 ECharts 图表）
+- 知识库检索（RAG）：`kb_search` / `kb_read`（接入 colna-memo 混合检索，配置 `KB_MEMO_DIR` 后启用）
+- Token 统计：每条回答显示 token 消耗（输入/输出），header 显示会话累计
 - SQLite 会话持久化；模型走 OpenAI 兼容端点（OpenAI / DeepSeek / 本地 vLLM）
 
 **web**（apps/web）
 
-- 聊天界面：逐 token 流式显示、停止生成、新会话
-- 刷新恢复：localStorage 记住 threadId + 历史回读接口
-- server 健康指示（绿/红点）、错误气泡提示
+- 聊天界面：逐 token 流式显示、工具调用过程卡、停止/打断、撤回、重新生成、复制、导出 Markdown
+- 多会话侧栏：列表切换 / 重命名 / 删除
+- server 健康指示（绿/红点）、错误气泡提示、Apple 风格（毛玻璃 chrome / SF 字体栈）
 
 ## 快速开始
 
@@ -50,7 +57,7 @@ pnpm dev:web
 | 命令 | 说明 |
 |---|---|
 | `pnpm dev:server` / `pnpm dev:web` | 分别启动 server / web 开发模式 |
-| `pnpm test` | 递归跑全部测试（server 83 + web 8，全离线，无需 key） |
+| `pnpm test` | 递归跑全部测试（server 126 + web 19，全离线，无需 key） |
 | `pnpm lint` / `pnpm typecheck` / `pnpm build` | 全仓 lint / 类型检查 / 构建 |
 
 ## 配置
